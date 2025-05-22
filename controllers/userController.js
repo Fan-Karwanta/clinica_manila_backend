@@ -237,14 +237,20 @@ const bookAppointment = async (req, res) => {
         
         // Calculate booking window
         const today = new Date()
-        const minDate = new Date(today)
-        minDate.setDate(today.getDate() + 5)
+        today.setHours(0, 0, 0, 0) // Reset time to start of day
+        
+        const appointmentDateStart = new Date(appointmentDate)
+        appointmentDateStart.setHours(0, 0, 0, 0) // Reset time to start of day
+        
+        // Calculate the difference in days
+        const diffTime = appointmentDateStart.getTime() - today.getTime()
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
         
         const maxDate = new Date(today)
         maxDate.setMonth(today.getMonth() + 1)
         
-        // Validate booking window
-        if (appointmentDate < minDate) {
+        // Validate booking window - must be at least 5 days in advance
+        if (diffDays < 5) {
             return res.json({ 
                 success: false, 
                 message: 'Appointments must be booked at least 5 days in advance' 
@@ -654,10 +660,10 @@ const verifyResetToken = async (req, res) => {
 const resetPassword = async (req, res) => {
     try {
         const { token } = req.params;
-        const { oldPassword, newPassword, confirmPassword } = req.body;
+        const { newPassword, confirmPassword } = req.body;
         
         // Validate passwords
-        if (!oldPassword || !newPassword || !confirmPassword) {
+        if (!newPassword || !confirmPassword) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields"
@@ -688,15 +694,6 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Password reset token is invalid or has expired"
-            });
-        }
-        
-        // Verify old password
-        const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
-        if (!isOldPasswordValid) {
-            return res.status(400).json({
-                success: false,
-                message: "Old password is incorrect"
             });
         }
         

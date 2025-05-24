@@ -321,8 +321,7 @@ const updateDoctor = async (req, res) => {
             about, 
             fees, 
             address, 
-            doc_lic_ID,
-            password 
+            doc_lic_ID
         } = req.body;
         
         // Find the doctor
@@ -346,12 +345,7 @@ const updateDoctor = async (req, res) => {
             doc_lic_ID: doc_lic_ID || doctor.doc_lic_ID
         };
         
-        // Handle password update if provided
-        if (password && password.length >= 8) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-            updateData.password = hashedPassword;
-        }
+        // Password changes are now handled in the doctor's dashboard
         
         // Handle image update if provided
         if (req.file) {

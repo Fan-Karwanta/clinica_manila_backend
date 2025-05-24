@@ -1,5 +1,17 @@
 import nodemailer from 'nodemailer';
 
+// Common feedback button for all emails
+const getFeedbackButton = () => {
+    return `
+        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+            <p style="color: #666; font-size: 14px;">We value your feedback!</p>
+            <div style="text-align: center; margin: 15px 0;">
+                <a href="http://localhost:3000/feedback" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Send Feedback</a>
+            </div>
+        </div>
+    `;
+};
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -29,6 +41,7 @@ export const sendRegistrationEmail = async (userEmail, status) => {
                     <p>Best regards,</p>
                     <p>Clinica Manila Support</p>
                 </div>
+                ${getFeedbackButton()}
             </div>
         `
     };
@@ -65,6 +78,7 @@ export const sendAdminNewRegistrationAlert = async (userData) => {
                 <div style="margin-top: 30px; color: #888; font-size: 14px;">
                     <p>This is an automated message from the Clinica Manila System.</p>
                 </div>
+                ${getFeedbackButton()}
             </div>
         `
     };
@@ -114,6 +128,7 @@ export const sendDoctorAppointmentNotification = async (doctorEmail, appointment
                     <p>Best regards,</p>
                     <p>Clinica Manila Appointments</p>
                 </div>
+                ${getFeedbackButton()}
             </div>
         `
     };
@@ -177,6 +192,7 @@ export const sendPatientAppointmentStatusNotification = async (patientEmail, app
                     <p>Best regards,</p>
                     <p>Clinica Manila Team</p>
                 </div>
+                ${getFeedbackButton()}
             </div>
         `
     };
@@ -186,6 +202,42 @@ export const sendPatientAppointmentStatusNotification = async (patientEmail, app
         return true;
     } catch (error) {
         console.error('Error sending patient appointment status notification:', error);
+        return false;
+    }
+};
+
+export const sendFeedbackEmail = async (feedbackData) => {
+    const { name, number, email, feedback } = feedbackData;
+    
+    const mailOptions = {
+        from: '"Clinica Manila Feedback System" <' + process.env.APP_EMAIL + '>',
+        to: 'clinica.manila.supp@gmail.com',
+        subject: 'New Feedback Submission - Clinica Manila',
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">New Feedback Submission</h2>
+                <p style="color: #666; font-size: 16px;">A new feedback has been submitted through the website:</p>
+                
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>Name:</strong> ${name}</p>
+                    <p><strong>Phone Number:</strong> ${number || 'Not provided'}</p>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Feedback:</strong></p>
+                    <p style="background-color: #fff; padding: 10px; border-radius: 3px;">${feedback}</p>
+                </div>
+                
+                <div style="margin-top: 30px; color: #888; font-size: 14px;">
+                    <p>This is an automated message from the Clinica Manila Feedback System.</p>
+                </div>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (error) {
+        console.error('Error sending feedback email:', error);
         return false;
     }
 };
@@ -212,6 +264,7 @@ export const sendPasswordResetEmail = async (userEmail, resetUrl) => {
                     <p>Best regards,</p>
                     <p>Clinica Manila Support</p>
                 </div>
+                ${getFeedbackButton()}
             </div>
         `
     };

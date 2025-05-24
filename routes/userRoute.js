@@ -1,5 +1,6 @@
 import express from "express";
-import { registerUser, loginUser, getProfile, updateProfile, bookAppointment, listAppointment, cancelAppointment, paymentRazorpay, verifyRazorpay, paymentStripe, verifyStripe, markAppointmentRead, checkEmailStatus, forgotPassword, verifyResetToken, resetPassword, createResetToken, getUserBookedSlots } from '../controllers/userController.js';
+import { registerUser, loginUser, getProfile, updateProfile, bookAppointment, listAppointment, cancelAppointment, paymentRazorpay, verifyRazorpay, paymentStripe, verifyStripe, markAppointmentRead, checkEmailStatus, forgotPassword, verifyResetToken, resetPassword, createResetToken, getUserBookedSlots, getUserDoctorBookedDates } from '../controllers/userController.js';
+import { submitFeedback } from '../controllers/feedbackController.js';
 import authUser from "../middleware/authUser.js";
 import upload from "../middleware/multer.js";
 
@@ -13,6 +14,7 @@ userRouter.put("/update-profile", authUser, upload.single('image'), updateProfil
 userRouter.post("/book-appointment", authUser, bookAppointment)
 userRouter.get("/appointments", authUser, listAppointment)
 userRouter.get("/booked-slots", authUser, getUserBookedSlots)
+userRouter.get("/doctor-booked-dates", authUser, getUserDoctorBookedDates)
 userRouter.post("/cancel-appointment", authUser, cancelAppointment)
 userRouter.post("/payment-razorpay", authUser, paymentRazorpay)
 userRouter.post("/verifyRazorpay", authUser, verifyRazorpay)
@@ -23,5 +25,6 @@ userRouter.post("/forgot-password", forgotPassword)
 userRouter.get("/reset-password/:token", verifyResetToken)
 userRouter.post("/reset-password/:token", resetPassword)
 userRouter.post("/create-reset-token", authUser, createResetToken)
+userRouter.post("/send-feedback", submitFeedback)
 
 export default userRouter;

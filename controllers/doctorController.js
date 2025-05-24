@@ -182,9 +182,9 @@ const doctorProfile = async (req, res) => {
 const updateDoctorProfile = async (req, res) => {
     try {
 
-        const { docId, fees, address, available } = req.body
+        const { docId, fees, address, available, dayOff, about } = req.body
 
-        await doctorModel.findByIdAndUpdate(docId, { fees, address, available })
+        await doctorModel.findByIdAndUpdate(docId, { fees, address, available, dayOff, about })
 
         res.json({ success: true, message: 'Profile Updated' })
 
@@ -235,6 +235,116 @@ const doctorDashboard = async (req, res) => {
     }
 }
 
+// API to change doctor password from Doctor Panel
+const changePassword = async (req, res) => {
+    try {
+        const { docId } = req.body
+        const { currentPassword, newPassword } = req.body
+
+        // Validate inputs
+        if (!currentPassword || !newPassword) {
+            return res.json({ success: false, message: "Both current and new password are required" })
+        }
+
+        // Find the doctor
+        const doctor = await doctorModel.findById(docId)
+        if (!doctor) {
+            return res.json({ success: false, message: "Doctor not found" })
+        }
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, doctor.password)
+        if (!isMatch) {
+            return res.json({ success: false, message: "Current password is incorrect" })
+        }
+
+        // Hash the new password
+        const salt = await bcrypt.genSalt(10)
+        const hashedPassword = await bcrypt.hash(newPassword, salt)
+
+        // Update the password
+        await doctorModel.findByIdAndUpdate(docId, { password: hashedPassword })
+
+        res.json({ success: true, message: "Password updated successfully" })
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// API to update doctor availability based on day off
+const updateDayOffAvailability = async (req, res) => {
+    try {
+        const { updateDoctorAvailabilityBasedOnDayOff } = await import('../utils/dayOffChecker.js');
+        const result = await updateDoctorAvailabilityBasedOnDayOff();
+        
+        res.json(result);
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// API to add consultation summary to a completed appointment
+const addConsultationSummary = async (req, res) => {
+    try {
+        const { docId, appointmentId, consultationSummary } = req.body
+
+        if (!consultationSummary || consultationSummary.trim() === '') {
+            return res.json({ success: false, message: 'Consultation summary is required' })
+        }
+
+        const appointmentData = await appointmentModel.findById(appointmentId)
+        if (appointmentData && appointmentData.docId === docId && appointmentData.isCompleted) {
+            await appointmentModel.findByIdAndUpdate(appointmentId, { consultationSummary })
+            
+            // Get patient email from userId
+            const patient = await userModel.findById(appointmentData.userId);
+            
+            // Send email notification to patient about consultation summary
+            try {
+                if (patient && patient.email) {
+                    await sendPatientAppointmentStatusNotification(
+                        patient.email,
+                        appointmentData,
+                        'summary_added'
+                    );
+                    console.log('Patient consultation summary notification sent successfully');
+                }
+            } catch (emailError) {
+                // Log error but don't fail the summary addition
+                console.error('Failed to send patient consultation summary notification:', emailError);
+            }
+            
+            return res.json({ success: true, message: 'Consultation summary added successfully' })
+        }
+
+        res.json({ success: false, message: 'Unable to add consultation summary' })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+// API to get appointment history for doctor (completed appointments)
+const appointmentHistory = async (req, res) => {
+    try {
+        const { docId } = req.body
+        const appointments = await appointmentModel.find({ 
+            docId, 
+            isCompleted: true,
+            cancelled: false
+        })
+
+        res.json({ success: true, appointments })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
 export {
     loginDoctor,
     appointmentsDoctor,
@@ -244,5 +354,9 @@ export {
     appointmentComplete,
     doctorDashboard,
     doctorProfile,
-    updateDoctorProfile
+    updateDoctorProfile,
+    changePassword,
+    updateDayOffAvailability,
+    addConsultationSummary,
+    appointmentHistory
 }

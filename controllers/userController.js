@@ -229,7 +229,7 @@ const updateProfile = async (req, res) => {
 // API to book appointment 
 const bookAppointment = async (req, res) => {
     try {
-        const { userId, docId, slotDate, slotTime } = req.body
+        const { userId, docId, slotDate, slotTime, appointmentReason } = req.body
         
         // Parse the slot date (format: day_month_year)
         const [day, month, year] = slotDate.split('_').map(num => parseInt(num))
@@ -312,6 +312,7 @@ const bookAppointment = async (req, res) => {
             amount: docData.fees,
             slotTime,
             slotDate,
+            appointmentReason: appointmentReason || '',
             date: Date.now()
         }
 
@@ -806,6 +807,43 @@ const getUserBookedSlots = async (req, res) => {
     }
 };
 
+// API to get user's booked dates with a specific doctor
+const getUserDoctorBookedDates = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const { docId } = req.query;
+        
+        if (!docId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Doctor ID is required'
+            });
+        }
+        
+        // Find all non-cancelled appointments for this user with this doctor
+        const appointments = await appointmentModel.find({
+            userId,
+            docId,
+            cancelled: false
+        }).select('slotDate');
+        
+        // Extract unique dates
+        const bookedDates = [...new Set(appointments.map(appointment => appointment.slotDate))];
+        
+        res.json({
+            success: true,
+            bookedDates
+        });
+        
+    } catch (error) {
+        console.log(error);
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 export {
     registerUser,
     loginUser,
@@ -824,5 +862,6 @@ export {
     verifyResetToken,
     resetPassword,
     createResetToken,
-    getUserBookedSlots
+    getUserBookedSlots,
+    getUserDoctorBookedDates
 };

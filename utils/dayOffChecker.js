@@ -11,32 +11,55 @@ export const updateDoctorAvailabilityBasedOnDayOff = async () => {
         const today = new Date();
         const currentDayOfWeek = daysOfWeek[today.getDay()];
         
-        // Find all doctors whose day off is today
-        const doctorsWithDayOff = await doctorModel.find({ dayOff: currentDayOfWeek });
+        console.log(`Running day off check - Current day is: ${currentDayOfWeek}`);
         
-        // Update their availability status to unavailable
-        for (const doctor of doctorsWithDayOff) {
-            await doctorModel.findByIdAndUpdate(doctor._id, { available: false });
-            console.log(`Updated availability for doctor ${doctor.name} (${doctor._id}) to unavailable because today is their day off (${currentDayOfWeek})`);
-        }
+        // PART 1: Handle doctors whose day off is TODAY - they should be unavailable
+        // Get all doctors with today as their day off (regardless of current availability)
+        const doctorsWithDayOffToday = await doctorModel.find({ dayOff: currentDayOfWeek });
         
-        // Find all doctors whose day off is not today but might have been set to unavailable yesterday
-        const doctorsWithoutDayOff = await doctorModel.find({ 
-            dayOff: { $ne: currentDayOfWeek, $ne: '' } // Only consider doctors who have a day off set and it's not today
-        });
+        console.log(`Found ${doctorsWithDayOffToday.length} doctors with day off today (${currentDayOfWeek})`);
         
-        // Check if their day off was yesterday and if so, reset their availability to true
-        const yesterdayIndex = (today.getDay() - 1 + 7) % 7; // Handle Sunday case
-        const yesterday = daysOfWeek[yesterdayIndex];
-        
-        for (const doctor of doctorsWithoutDayOff) {
-            if (doctor.dayOff === yesterday) {
-                await doctorModel.findByIdAndUpdate(doctor._id, { available: true });
-                console.log(`Reset availability for doctor ${doctor.name} (${doctor._id}) to available because yesterday was their day off (${yesterday})`);
+        // Force set their availability to unavailable
+        for (const doctor of doctorsWithDayOffToday) {
+            // Only update if they're currently available
+            if (doctor.available) {
+                await doctorModel.findByIdAndUpdate(doctor._id, { available: false });
+                console.log(`TURNED OFF: Doctor ${doctor.name} (${doctor._id}) is now unavailable because today (${currentDayOfWeek}) is their day off`);
+            } else {
+                console.log(`Doctor ${doctor.name} is already unavailable on their day off (${currentDayOfWeek})`);
             }
         }
         
-        return { success: true, message: 'Doctor availability updated based on day off settings' };
+        // PART 2: Handle doctors whose day off is NOT today - they should be available
+        // Get all doctors who have a day off set, but it's not today, and they're currently unavailable
+        const doctorsToTurnOn = await doctorModel.find({
+            dayOff: { $ne: currentDayOfWeek }, // Day off is not today
+            available: false // Currently unavailable
+        });
+        
+        console.log(`Found ${doctorsToTurnOn.length} doctors to turn available (not their day off today)`);
+        
+        // Turn them available
+        for (const doctor of doctorsToTurnOn) {
+            // Skip doctors with empty day off (they manage availability manually)
+            if (!doctor.dayOff) {
+                console.log(`Skipping doctor ${doctor.name} - no day off set, availability managed manually`);
+                continue;
+            }
+            
+            await doctorModel.findByIdAndUpdate(doctor._id, { available: true });
+            console.log(`TURNED ON: Doctor ${doctor.name} (${doctor._id}) is now available because today (${currentDayOfWeek}) is not their day off (${doctor.dayOff})`);
+        }
+        
+        return { 
+            success: true, 
+            message: 'Doctor availability updated based on day off settings',
+            stats: {
+                turnedOff: doctorsWithDayOffToday.filter(d => d.available).length,
+                turnedOn: doctorsToTurnOn.filter(d => d.dayOff).length,
+                currentDay: currentDayOfWeek
+            }
+        };
     } catch (error) {
         console.error('Error updating doctor availability based on day off:', error);
         return { success: false, message: error.message };

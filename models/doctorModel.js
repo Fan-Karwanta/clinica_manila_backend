@@ -17,6 +17,8 @@ const doctorSchema = new mongoose.Schema({
     date: { type: Number, required: true },
     doc_lic_ID: { type: String, required: true },
     dayOff: { type: String, default: '' }, // Day of the week that doctor is off (Monday, Tuesday, etc.)
+    isArchived: { type: Boolean, default: false }, // Flag to indicate if doctor is archived
+    archivedAt: { type: Date } // Date when doctor was archived
 }, { minimize: false })
 
 const doctorModel = mongoose.models.doctor || mongoose.model("doctor", doctorSchema);

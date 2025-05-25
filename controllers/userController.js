@@ -9,6 +9,7 @@ import crypto from "crypto";
 import Stripe from "stripe";
 import doctorModel from "../models/doctorModel.js";
 import { sendAdminNewRegistrationAlert, sendDoctorAppointmentNotification, sendPatientAppointmentStatusNotification, sendPasswordResetEmail } from "../utils/emailService.js";
+import axios from "axios";
 
 // Gateway Initialize
 const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -23,10 +24,31 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_SECRET_KEY
 });
 
+// Function to verify reCAPTCHA token
+const verifyRecaptcha = async (token) => {
+    try {
+        const response = await axios.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            null,
+            {
+                params: {
+                    secret: process.env.RECAPTCHA_SECRET_KEY,
+                    response: token
+                }
+            }
+        );
+        
+        return response.data.success;
+    } catch (error) {
+        console.error('reCAPTCHA verification error:', error);
+        return false;
+    }
+};
+
 // API to register user
 const registerUser = async (req, res) => {
     try {
-        const { firstName, lastName, middleName, email, password, dob } = req.body;
+        const { firstName, lastName, middleName, email, password, dob, recaptchaToken } = req.body;
         const validIdFile = req.file;
 
         // checking for all data to register user
@@ -34,6 +56,22 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Missing Details. Please provide all required information including a valid ID and date of birth.' 
+            });
+        }
+
+        // Verify reCAPTCHA token
+        if (!recaptchaToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'reCAPTCHA verification failed. Please try again.'
+            });
+        }
+
+        const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
+        if (!isRecaptchaValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'reCAPTCHA verification failed. Please try again.'
             });
         }
 

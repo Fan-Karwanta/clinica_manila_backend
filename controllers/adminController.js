@@ -139,8 +139,8 @@ const addDoctor = async (req, res) => {
 // API to get all doctors list for admin panel
 const allDoctors = async (req, res) => {
     try {
-
-        const doctors = await doctorModel.find({}).select('-password')
+        // Only return non-archived doctors
+        const doctors = await doctorModel.find({ isArchived: { $ne: true } })
         res.json({ success: true, doctors })
 
     } catch (error) {
@@ -272,11 +272,9 @@ const approveAppointment = async (req, res) => {
 // API to get all users list
 const getAllUsers = async (req, res) => {
     try {
-        const users = await userModel.find({})
-            .select('-password')
-            .sort({ createdAt: -1 });
-
-        res.status(200).json({
+        // Only return non-archived users
+        const users = await userModel.find({ isArchived: { $ne: true } });
+        res.json({
             success: true,
             users
         });
@@ -353,8 +351,18 @@ const updateDoctor = async (req, res) => {
             updateData.image = imageUpload.secure_url;
         }
         
+        // Check if day off field is included in the request
+        const dayOff = req.body.dayOff;
+        const dayOffChanged = dayOff !== undefined && dayOff !== doctor.dayOff;
+        
         // Update the doctor
         await doctorModel.findByIdAndUpdate(id, updateData);
+        
+        // If day off has changed, immediately run the day off checker
+        if (dayOffChanged) {
+            const { updateDoctorAvailabilityBasedOnDayOff } = await import('../utils/dayOffChecker.js');
+            await updateDoctorAvailabilityBasedOnDayOff();
+        }
         
         res.json({ success: true, message: 'Doctor updated successfully' });
     } catch (error) {
@@ -363,8 +371,8 @@ const updateDoctor = async (req, res) => {
     }
 };
 
-// API to delete doctor
-const deleteDoctor = async (req, res) => {
+// API to archive doctor instead of deleting
+const archiveDoctor = async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -375,10 +383,60 @@ const deleteDoctor = async (req, res) => {
             return res.json({ success: false, message: 'Doctor not found' });
         }
         
-        // Delete the doctor
-        await doctorModel.findByIdAndDelete(id);
+        // Archive the doctor
+        await doctorModel.findByIdAndUpdate(id, {
+            isArchived: true,
+            archivedAt: new Date()
+        });
         
-        res.json({ success: true, message: 'Doctor deleted successfully' });
+        res.json({ success: true, message: 'Doctor archived successfully' });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// API to restore archived doctor
+const restoreDoctor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Check if doctor exists
+        const doctor = await doctorModel.findById(id);
+        
+        if (!doctor) {
+            return res.json({ success: false, message: 'Doctor not found' });
+        }
+        
+        // Restore the doctor
+        await doctorModel.findByIdAndUpdate(id, {
+            isArchived: false,
+            archivedAt: null
+        });
+        
+        res.json({ success: true, message: 'Doctor restored successfully' });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// API to get all archived doctors
+const getArchivedDoctors = async (req, res) => {
+    try {
+        const archivedDoctors = await doctorModel.find({ isArchived: true });
+        res.json({ success: true, archivedDoctors });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// API to delete doctor (keeping for backward compatibility)
+const deleteDoctor = async (req, res) => {
+    try {
+        // Instead of deleting, we now archive the doctor
+        return await archiveDoctor(req, res);
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
@@ -411,28 +469,97 @@ const changeAvailability = async (req, res) => {
     }
 };
 
-// API to delete user
-const deleteUser = async (req, res) => {
+// API to archive user instead of deleting
+const archiveUser = async (req, res) => {
     try {
         const { userId } = req.params;
         
-        // Find and delete the user
-        const deletedUser = await userModel.findByIdAndDelete(userId);
+        // Find the user
+        const user = await userModel.findById(userId);
         
-        if (!deletedUser) {
+        if (!user) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
             });
         }
 
-        // You might want to also delete any associated data like appointments, etc.
-        // For example: await appointmentModel.deleteMany({ userId: userId });
+        // Archive the user
+        await userModel.findByIdAndUpdate(userId, {
+            isArchived: true,
+            archivedAt: new Date()
+        });
         
         res.status(200).json({
             success: true,
-            message: 'User deleted successfully'
+            message: 'User archived successfully'
         });
+    } catch (error) {
+        console.error('Error archiving user:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to archive user'
+        });
+    }
+};
+
+// API to restore archived user
+const restoreUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        // Find the user
+        const user = await userModel.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Restore the user
+        await userModel.findByIdAndUpdate(userId, {
+            isArchived: false,
+            archivedAt: null
+        });
+        
+        res.status(200).json({
+            success: true,
+            message: 'User restored successfully'
+        });
+    } catch (error) {
+        console.error('Error restoring user:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to restore user'
+        });
+    }
+};
+
+// API to get all archived users
+const getArchivedUsers = async (req, res) => {
+    try {
+        const archivedUsers = await userModel.find({ isArchived: true });
+        
+        res.status(200).json({
+            success: true,
+            archivedUsers
+        });
+    } catch (error) {
+        console.error('Error fetching archived users:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to fetch archived users'
+        });
+    }
+};
+
+// API to delete user (keeping for backward compatibility)
+const deleteUser = async (req, res) => {
+    try {
+        // Instead of deleting, we now archive the user
+        return await archiveUser(req, res);
     } catch (error) {
         console.error('Error deleting user:', error);
         res.status(500).json({
@@ -492,6 +619,55 @@ const getUsersAppointmentStats = async (req, res) => {
     }
 };
 
+// API to manually trigger day off checker and update doctor availability
+const manualDayOffCheck = async (req, res) => {
+    try {
+        // Force a fresh import to ensure we get the latest version
+        const { updateDoctorAvailabilityBasedOnDayOff } = await import('../utils/dayOffChecker.js?v=' + Date.now());
+        const result = await updateDoctorAvailabilityBasedOnDayOff();
+        
+        // Get the current day of the week for the response
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = new Date();
+        const currentDayOfWeek = daysOfWeek[today.getDay()];
+        
+        // Get all doctors with their day off and availability status for the response
+        const doctors = await doctorModel.find({}, 'name dayOff available');
+        
+        // Count statistics for the response
+        const stats = {
+            total: doctors.length,
+            onDayOff: doctors.filter(doc => doc.dayOff === currentDayOfWeek).length,
+            available: doctors.filter(doc => doc.available).length,
+            unavailable: doctors.filter(doc => !doc.available).length,
+            withDayOff: doctors.filter(doc => doc.dayOff).length,
+            withoutDayOff: doctors.filter(doc => !doc.dayOff).length,
+            ...result.stats
+        };
+        
+        res.json({
+            success: true,
+            message: `Doctor availability updated. Today is ${currentDayOfWeek}. ${stats.onDayOff} doctors have today as their day off.`,
+            currentDay: currentDayOfWeek,
+            stats,
+            doctors: doctors.map(doc => ({
+                id: doc._id,
+                name: doc.name,
+                dayOff: doc.dayOff || 'None',
+                available: doc.available,
+                isOnDayOff: doc.dayOff === currentDayOfWeek,
+                status: doc.available ? 'Available' : 'Unavailable',
+                dayOffStatus: !doc.dayOff ? 'No day off set' : 
+                              doc.dayOff === currentDayOfWeek ? 'Currently on day off' : 
+                              `Day off is on ${doc.dayOff}`
+            }))
+        });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
 export { 
     loginAdmin,
     appointmentsAdmin,
@@ -508,5 +684,12 @@ export {
     getAllUsers,
     changeAvailability,
     deleteUser,
-    getUsersAppointmentStats
+    getUsersAppointmentStats,
+    archiveDoctor,
+    restoreDoctor,
+    getArchivedDoctors,
+    archiveUser,
+    restoreUser,
+    getArchivedUsers,
+    manualDayOffCheck
 }

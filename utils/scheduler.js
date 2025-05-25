@@ -11,12 +11,12 @@ export const initScheduler = async () => {
         await updateDoctorAvailabilityBasedOnDayOff();
         console.log('Initial day off check completed');
         
-        // Set up a daily check at midnight
+        // Set up more frequent checks (every 5 minutes) to ensure doctor availability is updated promptly
         setInterval(async () => {
             console.log('Running scheduled day off check...');
             await updateDoctorAvailabilityBasedOnDayOff();
             console.log('Scheduled day off check completed');
-        }, 24 * 60 * 60 * 1000); // Run every 24 hours
+        }, 5 * 60 * 1000); // Run every 5 minutes
         
         console.log('Scheduler initialized successfully');
     } catch (error) {

@@ -19,7 +19,9 @@ const userSchema = new mongoose.Schema({
     validId: { type: String, required: true },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
-    date: { type: Date, default: Date.now }
+    date: { type: Date, default: Date.now },
+    isArchived: { type: Boolean, default: false },
+    archivedAt: { type: Date }
 })
 
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);

@@ -152,8 +152,8 @@ const allDoctors = async (req, res) => {
 // API to get dashboard data for admin panel
 const adminDashboard = async (req, res) => {
     try {
-
-        const doctors = await doctorModel.find({})
+        // Only count non-archived doctors
+        const doctors = await doctorModel.find({ isArchived: { $ne: true } })
         const users = await userModel.find({})
         const appointments = await appointmentModel.find({})
 
@@ -631,10 +631,10 @@ const manualDayOffCheck = async (req, res) => {
         const today = new Date();
         const currentDayOfWeek = daysOfWeek[today.getDay()];
         
-        // Get all doctors with their day off and availability status for the response
-        const doctors = await doctorModel.find({}, 'name dayOff available');
+        // Get all active (non-archived) doctors with their day off and availability status for the response
+        const doctors = await doctorModel.find({ isArchived: { $ne: true } }, 'name dayOff available');
         
-        // Count statistics for the response
+        // Count statistics for the response - only for active doctors
         const stats = {
             total: doctors.length,
             onDayOff: doctors.filter(doc => doc.dayOff === currentDayOfWeek).length,

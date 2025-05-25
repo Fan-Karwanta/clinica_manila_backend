@@ -14,8 +14,11 @@ export const updateDoctorAvailabilityBasedOnDayOff = async () => {
         console.log(`Running day off check - Current day is: ${currentDayOfWeek}`);
         
         // PART 1: Handle doctors whose day off is TODAY - they should be unavailable
-        // Get all doctors with today as their day off (regardless of current availability)
-        const doctorsWithDayOffToday = await doctorModel.find({ dayOff: currentDayOfWeek });
+        // Get all non-archived doctors with today as their day off (regardless of current availability)
+        const doctorsWithDayOffToday = await doctorModel.find({ 
+            dayOff: currentDayOfWeek,
+            isArchived: { $ne: true } 
+        });
         
         console.log(`Found ${doctorsWithDayOffToday.length} doctors with day off today (${currentDayOfWeek})`);
         
@@ -31,10 +34,11 @@ export const updateDoctorAvailabilityBasedOnDayOff = async () => {
         }
         
         // PART 2: Handle doctors whose day off is NOT today - they should be available
-        // Get all doctors who have a day off set, but it's not today, and they're currently unavailable
+        // Get all non-archived doctors who have a day off set, but it's not today, and they're currently unavailable
         const doctorsToTurnOn = await doctorModel.find({
             dayOff: { $ne: currentDayOfWeek }, // Day off is not today
-            available: false // Currently unavailable
+            available: false, // Currently unavailable
+            isArchived: { $ne: true } // Not archived
         });
         
         console.log(`Found ${doctorsToTurnOn.length} doctors to turn available (not their day off today)`);

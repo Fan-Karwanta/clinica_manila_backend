@@ -2,11 +2,14 @@ import nodemailer from 'nodemailer';
 
 // Common feedback button for all emails
 const getFeedbackButton = () => {
+    // Use the FRONTEND_URL from environment variables instead of hardcoded localhost
+    const frontendUrl = process.env.FRONTEND_URL || 'https://clinica-manila.vercel.app';
+    
     return `
         <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
             <p style="color: #666; font-size: 14px;">We value your feedback!</p>
             <div style="text-align: center; margin: 15px 0;">
-                <a href="http://localhost:3000/feedback" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Send Feedback</a>
+                <a href="${frontendUrl}/feedback" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Send Feedback</a>
             </div>
         </div>
     `;
@@ -168,7 +171,7 @@ export const sendPatientAppointmentStatusNotification = async (patientEmail, app
     
     const message = isApproved
         ? `Your appointment has been <strong style="color: ${statusColor};">APPROVED</strong> by the doctor. Please arrive at the clinic at least 15 minutes before your scheduled appointment time.`
-        : `We regret to inform you that your appointment has been <strong style="color: ${statusColor};">CANCELED</strong> by the doctor. Please book another appointment at your convenience or contact Clinica Manila support for assistance.`;
+        : `We regret to inform you that your appointment has been <strong style="color: ${statusColor};">CANCELED</strong> by the doctor. Please schedule another appointment at your convenience or contact Clinica Manila support for assistance.`;
     
     const mailOptions = {
         from: '"Clinica Manila Appointments" <' + process.env.APP_EMAIL + '>',
@@ -189,6 +192,8 @@ export const sendPatientAppointmentStatusNotification = async (patientEmail, app
                 
                 <div style="margin-top: 30px; color: #888; font-size: 14px;">
                     <p>If you have any questions, please contact Clinica Manila Support.</p>
+                    <p>Email : clinica.manila.supp@gmail.com</p>
+                    <p>Phone : +632 8661 7777</p>
                     <p>Best regards,</p>
                     <p>Clinica Manila Team</p>
                 </div>

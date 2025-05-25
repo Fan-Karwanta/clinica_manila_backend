@@ -184,7 +184,7 @@ export const sendPatientAppointmentStatusNotification = async (patientEmail, app
                 
                 <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p><strong>Doctor:</strong> ${docData.name} ${docData.name_extension || ''}</p>
-                    <p><strong>Speciality:</strong> ${docData.speciality}</p>
+                    <p><strong>Speciality:</strong> ${docData.speciality ? docData.speciality.replace(/_/g, ' ') : ''}</p>
                     <p><strong>Date:</strong> ${formattedDate}</p>
                     <p><strong>Time:</strong> ${slotTime}</p>
                     <p><strong>Status:</strong> <span style="color: ${statusColor};">${statusText}</span></p>
@@ -265,7 +265,13 @@ export const sendPasswordResetEmail = async (userEmail, resetUrl) => {
                 
                 <p style="color: #666; font-size: 14px;">This link will expire in 1 hour for security reasons.</p>
                 
-                <div style="margin-top: 30px; color: #888; font-size: 14px;">
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;">
+                    <p>If you need assistance, please contact us:</p>
+                    <p>Email: clinica.manila.supp@gmail.com</p>
+                    <p>Phone: +632 8661 7777</p>
+                </div>
+                
+                <div style="margin-top: 20px; color: #888; font-size: 14px;">
                     <p>Best regards,</p>
                     <p>Clinica Manila Support</p>
                 </div>
